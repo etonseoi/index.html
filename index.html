@@ -5,160 +5,183 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Artistic Atlas</title>
     
-    <!-- 1. External Tools (Tailwind) -->
+    <!-- Design Tools -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- 2. Your Styles (The Look) -->
-   <style>
-    @font-face {
-        font-family: 'DINdong';
-        src: url('DINdong.otf') format('opentype');
-        font-display: swap;
-        font-style: normal; /* Forces normal style at the font level */
-    }
+    <style>
+        /* 1. Custom Font Integration */
+        @font-face {
+            font-family: 'DINdong';
+            src: url('DINdong.otf') format('opentype');
+            font-display: swap;
+            font-style: normal;
+        }
 
-    body { 
-        font-family: 'DINdong', sans-serif; 
-        background: #0a0a0a; 
-        color: white; 
-        overflow: hidden; 
-        font-style: normal !important; /* Overrides any inherited italics */
-    }
+        /* 2. Global Styling - No Italics */
+        body { 
+            font-family: 'DINdong', sans-serif; 
+            background: #0a0a0a; 
+            color: white; 
+            overflow: hidden; 
+            font-style: normal !important;
+            -webkit-font-smoothing: antialiased;
+        }
 
-    /* Removed 'italic' from here */
-    .serif { 
-        font-family: 'DINdong', serif; 
-        font-style: normal; 
-    }
+        .serif { 
+            font-family: 'DINdong', serif; 
+            font-style: normal; 
+        }
 
-    .glass { 
-        background: rgba(255, 255, 255, 0.03); 
-        backdrop-filter: blur(25px); 
-        -webkit-backdrop-filter: blur(25px);
-        border: 1px solid rgba(255, 255, 255, 0.1); 
-    }
-</style>
+        /* 3. Artistic Glass Effect */
+        .glass { 
+            background: rgba(255, 255, 255, 0.03); 
+            backdrop-filter: blur(30px); 
+            -webkit-backdrop-filter: blur(30px);
+            border: 1px solid rgba(255, 255, 255, 0.1); 
+        }
+
+        /* Animations */
+        .fade-in {
+            animation: fadeIn 0.8s ease-out forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
 </head>
 
 <body class="h-screen flex items-center justify-center">
 
-    <!-- The Background Art -->
-    <div class="fixed inset-0 -z-10 bg-gradient-to-br from-black via-zinc-900 to-indigo-950 opacity-50"></div>
+    <!-- Background Art -->
+    <div class="fixed inset-0 -z-10 bg-gradient-to-br from-black via-zinc-900 to-indigo-950 opacity-60"></div>
 
-    <!-- The Top Card -->
-    <div id="popup-card" class="fixed top-10 inset-x-4 mx-auto max-w-md glass rounded-[2rem] p-8 transform transition-all duration-1000 shadow-2xl">
+    <!-- The Main App Interface -->
+    <div id="popup-card" class="fixed top-10 inset-x-4 mx-auto max-w-md glass rounded-[2.5rem] p-10 shadow-2xl transition-all duration-1000">
         
-        <!-- Data Initialization -->
-        <div class="mb-4">
-            <label class="text-[10px] opacity-40 uppercase tracking-widest block mb-2">Initialize Data</label>
-            <input type="file" id="fileInput" class="text-[10px] text-white/60" accept=".json">
+        <!-- Initialization Header -->
+        <div class="mb-8">
+            <label class="text-[9px] opacity-30 uppercase tracking-[0.4em] block mb-3 font-normal">System Initialization</label>
+            <input type="file" id="fileInput" class="text-[10px] text-white/40 font-normal file:bg-white/5 file:border-none file:text-white/60 file:rounded-full file:px-3 file:py-1 file:mr-3 cursor-pointer" accept=".json">
         </div>
 
-        <h1 class="serif text-3xl italic font-light mb-6">Nearby Discoveries</h1>
+        <h1 class="serif text-3xl font-light mb-8 uppercase tracking-[0.1em]">Nearby Discoveries</h1>
         
-        <div id="list-10min" class="space-y-4">
-            <div class="flex justify-between items-center opacity-80">
-                <span class="font-light tracking-wide italic">Upload your JSON to begin</span>
+        <!-- The 10-Minute Walk List -->
+        <div id="list-10min" class="space-y-6">
+            <div class="opacity-30 text-xs font-light tracking-wide">
+                Please provide Google Location data to begin scanning...
             </div>
         </div>
 
-        <button id="more-btn" class="mt-8 w-full py-2 text-[10px] tracking-[0.3em] text-white/30 hover:text-white/80 transition-all uppercase border-t border-white/5 pt-4">
+        <!-- Extension Trigger -->
+        <button id="more-btn" class="mt-12 w-full py-4 text-[10px] tracking-[0.4em] text-white/20 hover:text-white/70 transition-all uppercase border-t border-white/5 font-normal">
             [ search for more within 15mins ]
         </button>
 
-        <div id="list-15min" class="hidden mt-4 space-y-4 pt-4 border-t border-white/5 animate-pulse text-white/40 text-xs">
-            Search range extended...
+        <!-- The 15-Minute Walk List -->
+        <div id="list-15min" class="hidden mt-6 space-y-6 pt-2 text-white/40">
+            <!-- Extended places appear here -->
         </div>
     </div>
 
-    <!-- 3. The Brain (Must be at the BOTTOM) -->
-  <script>
-    let userLocation = null;
-    let savedPlaces = [];
+    <!-- The App Brain -->
+    <script>
+        let userLocation = null;
+        let savedPlaces = [];
 
-    // 1. The Math Engine (Haversine Formula)
-    function calculateWalkingMinutes(lat1, lon1, lat2, lon2) {
-        const R = 6371; // Earth's radius in km
-        const dLat = (lat2 - lat1) * Math.PI / 180;
-        const dLon = (lon2 - lon1) * Math.PI / 180;
-        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-                  Math.sin(dLon/2) * Math.sin(dLon/2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-        const distanceKm = R * c;
-        
-        // Average walking speed is roughly 5km/h
-        // (Distance / 5) * 60 minutes
-        return Math.round((distanceKm / 5) * 60);
-    }
-
-    // 2. The Location Engine
-    function startTracking() {
-        if (navigator.geolocation) {
-            navigator.geolocation.watchPosition((position) => {
-                userLocation = {
-                    lat: position.coords.latitude,
-                    lng: position.coords.longitude
-                };
-                updateUI();
-            }, (error) => {
-                console.error("Location access denied.");
-            }, { enableHighAccuracy: true });
+        // --- MATH ENGINE: Calculate Walking Minutes ---
+        function getMinutes(lat1, lon1, lat2, lon2) {
+            const R = 6371; // Earth radius
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+                      Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            const distanceKm = R * c;
+            return Math.round((distanceKm / 5) * 60); // 5km/h avg speed
         }
-    }
 
-    // 3. UI Update Engine
-    function updateUI() {
-        if (!userLocation || savedPlaces.length === 0) return;
+        // --- LOCATION ENGINE: Real-time tracking ---
+        function startScanning() {
+            if (navigator.geolocation) {
+                navigator.geolocation.watchPosition((position) => {
+                    userLocation = {
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude
+                    };
+                    renderAtlas();
+                }, null, { enableHighAccuracy: true });
+            } else {
+                alert("Location services are required for this artistic experience.");
+            }
+        }
 
-        const list10 = document.getElementById('list-10min');
-        list10.innerHTML = ""; // Clear current list
+        // --- UI ENGINE: Building the List ---
+        function renderAtlas() {
+            if (!userLocation || savedPlaces.length === 0) return;
 
-        savedPlaces.forEach(place => {
-            // Google JSON structure usually: place.geometry.coordinates [lng, lat]
-            const coords = place.geometry.coordinates;
-            const minutes = calculateWalkingMinutes(userLocation.lat, userLocation.lng, coords[1], coords[0]);
+            const list10 = document.getElementById('list-10min');
+            const list15 = document.getElementById('list-15min');
+            
+            list10.innerHTML = ""; 
+            list15.innerHTML = "";
 
-            if (minutes <= 10) {
-                const item = document.createElement('div');
-                item.className = "flex justify-between items-center opacity-80 animate-in fade-in duration-500";
-                item.innerHTML = `
-                    <span class="font-light tracking-wide">${place.properties.name || 'Saved Spot'}</span>
-                    <span class="text-[10px] font-mono opacity-40 uppercase">${minutes} min walk</span>
+            // Sort all places by distance
+            const sorted = savedPlaces.map(place => {
+                const coords = place.geometry.coordinates;
+                const minutes = getMinutes(userLocation.lat, userLocation.lng, coords[1], coords[0]);
+                return { ...place, minutes };
+            }).sort((a, b) => a.minutes - b.minutes);
+
+            sorted.forEach(place => {
+                const element = document.createElement('div');
+                element.className = "flex justify-between items-end fade-in font-normal";
+                element.innerHTML = `
+                    <div class="flex flex-col">
+                        <span class="text-sm tracking-widest text-white/90 uppercase">${place.properties.name || 'Unnamed Spot'}</span>
+                    </div>
+                    <span class="text-[9px] font-mono opacity-30 uppercase tracking-tighter">${place.minutes} MIN WALK</span>
                 `;
-                list10.appendChild(item);
-                
-                // TRIGGER ALERT: If specifically within 5 mins
-                if (minutes <= 5) {
-                    console.log("Spot nearby!", place.properties.name);
-                    // In a web app, we use a simple vibration or subtle alert
+
+                if (place.minutes <= 10) {
+                    list10.appendChild(element);
+                    // Critical Alert: If 5 mins or less
+                    if (place.minutes <= 5) {
+                        element.classList.add("text-indigo-400");
+                    }
+                } else if (place.minutes <= 15) {
+                    list15.appendChild(element);
                 }
-            }
+            });
+        }
+
+        // --- FILE HANDLER ---
+        const fileInput = document.getElementById('fileInput');
+        fileInput.addEventListener('change', (e) => {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    const json = JSON.parse(event.target.result);
+                    savedPlaces = json.features || [];
+                    alert("Atlas Active. Found " + savedPlaces.length + " saved locations.");
+                    startScanning();
+                } catch (err) {
+                    alert("Data format unrecognized. Please use Google Takeout JSON.");
+                }
+            };
+            reader.readAsText(e.target.files[0]);
         });
-    }
 
-    // 4. File Upload Logic
-    const fileInput = document.getElementById('fileInput');
-    fileInput.addEventListener('change', (event) => {
-        const file = event.target.files[0];
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            try {
-                const data = JSON.parse(e.target.result);
-                savedPlaces = data.features || [];
-                alert("Atlas Initialized: " + savedPlaces.length + " pins active.");
-                startTracking(); // Start GPS after file is loaded
-            } catch (err) {
-                alert("Invalid JSON format.");
-            }
-        };
-        reader.readAsText(file);
-    });
-
-    // Expand Button Logic
-    document.getElementById('more-btn').addEventListener('click', () => {
-        document.getElementById('list-15min').classList.toggle('hidden');
-    });
-</script>
+        // Toggle Expand
+        document.getElementById('more-btn').addEventListener('click', () => {
+            const l15 = document.getElementById('list-15min');
+            l15.classList.toggle('hidden');
+            document.getElementById('more-btn').innerText = l15.classList.contains('hidden') ? 
+                '[ search for more within 15mins ]' : '[ collapse extended reach ]';
+        });
+    </script>
 </body>
 </html>
