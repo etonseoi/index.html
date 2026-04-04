@@ -85,110 +85,140 @@
     </div>
 
     <script>
-        let userLocation = null;
-        let savedPlaces = [];
+    let userLocation = null;
+    let savedPlaces = [];
 
-        function getMinutes(lat1, lon1, lat2, lon2) {
-            const R = 6371; 
-            const dLat = (lat2 - lat1) * Math.PI / 180;
-            const dLon = (lon2 - lon1) * Math.PI / 180;
-            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-                      Math.sin(dLon/2) * Math.sin(dLon/2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-            return Math.round(((R * c) / 5) * 60); 
-        }
+    function getMinutes(lat1, lon1, lat2, lon2) {
+        const R = 6371; 
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+                  Math.sin(dLon/2) * Math.sin(dLon/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return Math.round(((R * c) / 5) * 60); 
+    }
 
-        function startScanning() {
-            const label = document.getElementById('gps-label');
-            const btn = document.getElementById('gps-btn');
-            label.innerText = "Requesting Access...";
-            
-            navigator.geolocation.getCurrentPosition((pos) => {
-                userLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-                label.innerText = "GPS ACTIVE";
-                label.style.color = "#818cf8";
-                btn.innerText = "Location Synced";
-                btn.style.opacity = "0.3";
-                btn.disabled = true;
+    function startScanning() {
+        const label = document.getElementById('gps-label');
+        const btn = document.getElementById('gps-btn');
+        label.innerText = "Requesting Access...";
+        
+        navigator.geolocation.getCurrentPosition((pos) => {
+            userLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+            label.innerText = "GPS ACTIVE";
+            label.style.color = "#818cf8";
+            btn.innerText = "Location Synced";
+            btn.style.opacity = "0.3";
+            btn.disabled = true;
+            renderAtlas();
+
+            navigator.geolocation.watchPosition((p) => {
+                userLocation = { lat: p.coords.latitude, lng: p.coords.longitude };
                 renderAtlas();
+            }, null, { enableHighAccuracy: true });
+        }, (err) => {
+            alert("GPS Error: " + err.message);
+        }, { enableHighAccuracy: true });
+    }
 
-                navigator.geolocation.watchPosition((p) => {
-                    userLocation = { lat: p.coords.latitude, lng: p.coords.longitude };
-                    renderAtlas();
-                }, null, { enableHighAccuracy: true });
-            }, (err) => {
-                alert("GPS Error: " + err.message);
-            }, { enableHighAccuracy: true });
-        }
+    // --- SMARTER CSV PARSER ---
+    function parseCSV(text) {
+        const lines = text.split(/\r?\n/); // Handles Windows and Mac line breaks
+        if (lines.length < 2) return [];
 
-        // --- NEW CSV PARSER ENGINE ---
-        function parseCSV(text) {
-            const lines = text.split('\n');
-            const result = [];
-            const headers = lines[0].toLowerCase().split(',');
+        const headers = lines[0].toLowerCase().split(',');
+        
+        // Find Column Indexes by keywords
+        const nameIdx = headers.findIndex(h => h.includes('name') || h.includes('title') || h.includes('label'));
+        const latIdx = headers.findIndex(h => h.includes('lat') || h.includes('y'));
+        const lngIdx = headers.findIndex(h => h.includes('long') || h.includes('lng') || h.includes('x'));
 
-            // Find which column index is Name, Latitude, and Longitude
-            const nameIdx = headers.findIndex(h => h.includes('name') || h.includes('title'));
-            const latIdx = headers.findIndex(h => h.includes('lat'));
-            const lngIdx = headers.findIndex(h => h.includes('long') || h.includes('lng'));
-
-            for (let i = 1; i < lines.length; i++) {
-                const row = lines[i].split(',');
-                if (row.length > 1 && row[latIdx] && row[lngIdx]) {
+        const result = [];
+        for (let i = 1; i < lines.length; i++) {
+            const row = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/); // Clever split to ignore commas inside quotes
+            if (row.length > 1) {
+                const lat = parseFloat(row[latIdx]);
+                const lng = parseFloat(row[lngIdx]);
+                
+                if (!isNaN(lat) && !isNaN(lng)) {
                     result.push({
-                        name: row[nameIdx]?.replace(/"/g, '') || 'Saved Place',
-                        lat: parseFloat(row[latIdx]),
-                        lng: parseFloat(row[lngIdx])
+                        name: row[nameIdx]?.replace(/"/g, '').trim() || 'Saved Spot',
+                        lat: lat,
+                        lng: lng
                     });
                 }
             }
-            return result;
+        }
+        return result;
+    }
+
+    function renderAtlas() {
+        const list10 = document.getElementById('list-10min');
+        const list15 = document.getElementById('list-15min');
+        
+        if (!userLocation) return;
+        if (savedPlaces.length === 0) {
+            list10.innerHTML = '<div class="opacity-30 text-xs font-normal italic">No places found in this CSV...</div>';
+            return;
         }
 
-        function renderAtlas() {
-            if (!userLocation || savedPlaces.length === 0) return;
-            const list10 = document.getElementById('list-10min');
-            const list15 = document.getElementById('list-15min');
-            list10.innerHTML = ""; 
-            list15.innerHTML = "";
+        list10.innerHTML = ""; 
+        list15.innerHTML = "";
 
-            const sorted = savedPlaces.map(place => {
-                return { ...place, minutes: getMinutes(userLocation.lat, userLocation.lng, place.lat, place.lng) };
-            })
-            .sort((a, b) => a.minutes - b.minutes);
+        const sorted = savedPlaces.map(place => {
+            return { ...place, minutes: getMinutes(userLocation.lat, userLocation.lng, place.lat, place.lng) };
+        })
+        .sort((a, b) => a.minutes - b.minutes);
 
-            sorted.forEach(place => {
-                const element = document.createElement('div');
-                element.className = "flex justify-between items-end fade-in font-normal";
-                const isVeryClose = place.minutes <= 5;
-                element.innerHTML = `
-                    <div class="flex flex-col">
-                        <span class="text-sm tracking-widest uppercase ${isVeryClose ? 'text-white' : 'text-white/70'}">${place.name}</span>
-                    </div>
-                    <span class="text-[9px] font-mono uppercase tracking-tighter ${isVeryClose ? 'text-indigo-400' : 'opacity-30'}">${place.minutes} MIN WALK</span>
-                `;
-                if (place.minutes <= 10) list10.appendChild(element);
-                else if (place.minutes <= 15) list15.appendChild(element);
-            });
+        let count = 0;
+        sorted.forEach(place => {
+            const element = document.createElement('div');
+            element.className = "flex justify-between items-end fade-in font-normal mb-6";
+            const isVeryClose = place.minutes <= 5;
+            
+            element.innerHTML = `
+                <div class="flex flex-col">
+                    <span class="text-sm tracking-widest uppercase ${isVeryClose ? 'text-white font-bold' : 'text-white/70'}">${place.name}</span>
+                </div>
+                <span class="text-[9px] font-mono uppercase tracking-tighter ${isVeryClose ? 'text-indigo-400' : 'opacity-30'}">${place.minutes} MIN WALK</span>
+            `;
+
+            if (place.minutes <= 10) {
+                list10.appendChild(element);
+                count++;
+            } else if (place.minutes <= 15) {
+                list15.appendChild(element);
+                count++;
+            }
+        });
+
+        if (count === 0) {
+            list10.innerHTML = '<div class="opacity-30 text-xs font-normal italic">Atlas synced, but no pins are within 15 mins of you.</div>';
         }
+    }
 
-        document.getElementById('fileInput').addEventListener('change', (e) => {
-            Array.from(e.target.files).forEach(file => {
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                    const csvData = parseCSV(event.target.result);
+    document.getElementById('fileInput').addEventListener('change', (e) => {
+        Array.from(e.target.files).forEach(file => {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const csvData = parseCSV(event.target.result);
+                if (csvData.length > 0) {
                     savedPlaces = [...savedPlaces, ...csvData];
                     renderAtlas();
-                };
-                reader.readAsText(file);
-            });
-            alert("CSV Data Integrated.");
+                    alert(`Success: Integrated ${csvData.length} spots from ${file.name}`);
+                } else {
+                    alert(`Error: Could not find Latitude/Longitude columns in ${file.name}`);
+                }
+            };
+            reader.readAsText(file);
         });
+    });
 
-        document.getElementById('more-btn').addEventListener('click', () => {
-            document.getElementById('list-15min').classList.toggle('hidden');
-        });
-    </script>
+    document.getElementById('more-btn').addEventListener('click', () => {
+        document.getElementById('list-15min').classList.toggle('hidden');
+    });
+</script>
+    
 </body>
 </html>
