@@ -9,7 +9,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     
     <style>
-        /* 1. Custom Font Integration */
         @font-face {
             font-family: 'DINdong';
             src: url('DINdong.otf') format('opentype');
@@ -17,7 +16,6 @@
             font-style: normal;
         }
 
-        /* 2. Global Styling - Purely Upright/No Italics */
         body { 
             font-family: 'DINdong', sans-serif; 
             background: #0a0a0a; 
@@ -27,12 +25,8 @@
             -webkit-font-smoothing: antialiased;
         }
 
-        .serif { 
-            font-family: 'DINdong', serif; 
-            font-style: normal; 
-        }
+        .serif { font-family: 'DINdong', serif; font-style: normal; }
 
-        /* 3. Artistic Glass Effect */
         .glass { 
             background: rgba(255, 255, 255, 0.03); 
             backdrop-filter: blur(35px); 
@@ -40,7 +34,6 @@
             border: 1px solid rgba(255, 255, 255, 0.1); 
         }
 
-        /* Animations */
         .fade-in {
             animation: fadeIn 0.8s ease-out forwards;
         }
@@ -50,7 +43,6 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
-        /* Custom Scrollbar for the list */
         .custom-scroll::-webkit-scrollbar { width: 2px; }
         .custom-scroll::-webkit-scrollbar-track { background: transparent; }
         .custom-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); }
@@ -59,10 +51,8 @@
 
 <body class="h-screen flex items-center justify-center">
 
-    <!-- Background Art -->
     <div class="fixed inset-0 -z-10 bg-gradient-to-br from-black via-zinc-900 to-indigo-950 opacity-60"></div>
 
-    <!-- The Main App Interface -->
     <div id="popup-card" class="fixed top-10 inset-x-4 mx-auto max-w-md glass rounded-[2.5rem] p-10 shadow-2xl transition-all duration-1000">
         
         <!-- Step 1: GPS Activation -->
@@ -75,36 +65,29 @@
 
         <!-- Step 2: Data Loading -->
         <div class="mb-10">
-            <label class="text-[9px] opacity-30 uppercase tracking-[0.4em] block mb-3 font-normal">Step 2: Initialize Atlas</label>
-            <input type="file" id="fileInput" multiple class="text-[10px] text-white/40 font-normal file:bg-white/10 file:border-none file:text-white/80 file:rounded-full file:px-4 file:py-1 file:mr-3 cursor-pointer" accept=".json">
+            <label class="text-[9px] opacity-30 uppercase tracking-[0.4em] block mb-3 font-normal">Step 2: Initialize Atlas (CSV)</label>
+            <input type="file" id="fileInput" multiple class="text-[10px] text-white/40 font-normal file:bg-white/10 file:border-none file:text-white/80 file:rounded-full file:px-4 file:py-1 file:mr-3 cursor-pointer" accept=".csv">
         </div>
 
         <h1 class="serif text-3xl font-light mb-8 uppercase tracking-[0.1em]">Nearby Discoveries</h1>
         
-        <!-- The 10-Minute Walk List -->
         <div id="list-10min" class="space-y-6 max-h-[30vh] overflow-y-auto custom-scroll pr-2">
             <div class="opacity-30 text-xs font-light tracking-wide font-normal">
                 Awaiting data synchronization...
             </div>
         </div>
 
-        <!-- Extension Trigger -->
         <button id="more-btn" class="mt-12 w-full py-4 text-[10px] tracking-[0.4em] text-white/20 hover:text-white/70 transition-all uppercase border-t border-white/5 font-normal">
             [ search for more within 15mins ]
         </button>
 
-        <!-- The 15-Minute Walk List -->
-        <div id="list-15min" class="hidden mt-6 space-y-6 pt-2 text-white/40 font-normal">
-            <!-- Extended places appear here -->
-        </div>
+        <div id="list-15min" class="hidden mt-6 space-y-6 pt-2 text-white/40 font-normal"></div>
     </div>
 
-    <!-- The App Brain (Must be at the BOTTOM) -->
     <script>
         let userLocation = null;
         let savedPlaces = [];
 
-        // --- MATH ENGINE ---
         function getMinutes(lat1, lon1, lat2, lon2) {
             const R = 6371; 
             const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -113,110 +96,98 @@
                       Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
                       Math.sin(dLon/2) * Math.sin(dLon/2);
             const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-            const distanceKm = R * c;
-            return Math.round((distanceKm / 5) * 60); 
+            return Math.round(((R * c) / 5) * 60); 
         }
 
-        // --- NEW DIRECT LOCATION ENGINE FOR IOS ---
         function startScanning() {
             const label = document.getElementById('gps-label');
             const btn = document.getElementById('gps-btn');
+            label.innerText = "Requesting Access...";
             
-            label.innerText = "Requesting GPS...";
-            label.style.opacity = "1";
+            navigator.geolocation.getCurrentPosition((pos) => {
+                userLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                label.innerText = "GPS ACTIVE";
+                label.style.color = "#818cf8";
+                btn.innerText = "Location Synced";
+                btn.style.opacity = "0.3";
+                btn.disabled = true;
+                renderAtlas();
 
-            // Most direct call possible
-            navigator.geolocation.getCurrentPosition(
-                function(pos) {
-                    userLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-                    label.innerText = "GPS ACTIVE";
-                    label.style.color = "#818cf8";
-                    btn.innerText = "Location Synced";
-                    btn.style.opacity = "0.3";
-                    btn.disabled = true;
+                navigator.geolocation.watchPosition((p) => {
+                    userLocation = { lat: p.coords.latitude, lng: p.coords.longitude };
                     renderAtlas();
-
-                    // Start continuous watch after success
-                    navigator.geolocation.watchPosition((p) => {
-                        userLocation = { lat: p.coords.latitude, lng: p.coords.longitude };
-                        renderAtlas();
-                    }, null, { enableHighAccuracy: true });
-                }, 
-                function(err) {
-                    alert("Location Error: " + err.message);
-                    label.innerText = "GPS ERROR";
-                }, 
-                { enableHighAccuracy: true, timeout: 8000 }
-            );
+                }, null, { enableHighAccuracy: true });
+            }, (err) => {
+                alert("GPS Error: " + err.message);
+            }, { enableHighAccuracy: true });
         }
 
-        // --- UI ENGINE ---
+        // --- NEW CSV PARSER ENGINE ---
+        function parseCSV(text) {
+            const lines = text.split('\n');
+            const result = [];
+            const headers = lines[0].toLowerCase().split(',');
+
+            // Find which column index is Name, Latitude, and Longitude
+            const nameIdx = headers.findIndex(h => h.includes('name') || h.includes('title'));
+            const latIdx = headers.findIndex(h => h.includes('lat'));
+            const lngIdx = headers.findIndex(h => h.includes('long') || h.includes('lng'));
+
+            for (let i = 1; i < lines.length; i++) {
+                const row = lines[i].split(',');
+                if (row.length > 1 && row[latIdx] && row[lngIdx]) {
+                    result.push({
+                        name: row[nameIdx]?.replace(/"/g, '') || 'Saved Place',
+                        lat: parseFloat(row[latIdx]),
+                        lng: parseFloat(row[lngIdx])
+                    });
+                }
+            }
+            return result;
+        }
+
         function renderAtlas() {
             if (!userLocation || savedPlaces.length === 0) return;
-
             const list10 = document.getElementById('list-10min');
             const list15 = document.getElementById('list-15min');
             list10.innerHTML = ""; 
             list15.innerHTML = "";
 
             const sorted = savedPlaces.map(place => {
-                const coords = place.geometry ? place.geometry.coordinates : null;
-                if (!coords) return null;
-                const minutes = getMinutes(userLocation.lat, userLocation.lng, coords[1], coords[0]);
-                return { ...place, minutes };
+                return { ...place, minutes: getMinutes(userLocation.lat, userLocation.lng, place.lat, place.lng) };
             })
-            .filter(p => p !== null)
             .sort((a, b) => a.minutes - b.minutes);
 
             sorted.forEach(place => {
                 const element = document.createElement('div');
                 element.className = "flex justify-between items-end fade-in font-normal";
-                
                 const isVeryClose = place.minutes <= 5;
-                const timeColor = isVeryClose ? "text-indigo-400 opacity-100" : "opacity-30";
-                const nameColor = isVeryClose ? "text-white" : "text-white/70";
-
                 element.innerHTML = `
                     <div class="flex flex-col">
-                        <span class="text-sm tracking-widest uppercase ${nameColor}">${place.properties.name || 'Unnamed Spot'}</span>
+                        <span class="text-sm tracking-widest uppercase ${isVeryClose ? 'text-white' : 'text-white/70'}">${place.name}</span>
                     </div>
-                    <span class="text-[9px] font-mono uppercase tracking-tighter ${timeColor}">${place.minutes} MIN WALK</span>
+                    <span class="text-[9px] font-mono uppercase tracking-tighter ${isVeryClose ? 'text-indigo-400' : 'opacity-30'}">${place.minutes} MIN WALK</span>
                 `;
-
-                if (place.minutes <= 10) {
-                    list10.appendChild(element);
-                } else if (place.minutes <= 15) {
-                    list15.appendChild(element);
-                }
+                if (place.minutes <= 10) list10.appendChild(element);
+                else if (place.minutes <= 15) list15.appendChild(element);
             });
         }
 
-        // --- MULTI-FILE HANDLER ---
-        const fileInput = document.getElementById('fileInput');
-        fileInput.addEventListener('change', (e) => {
-            const files = e.target.files;
-            Array.from(files).forEach(file => {
+        document.getElementById('fileInput').addEventListener('change', (e) => {
+            Array.from(e.target.files).forEach(file => {
                 const reader = new FileReader();
                 reader.onload = (event) => {
-                    try {
-                        const json = JSON.parse(event.target.result);
-                        const newPins = json.features || [];
-                        savedPlaces = [...savedPlaces, ...newPins];
-                        renderAtlas();
-                    } catch (err) { console.error("JSON Error"); }
+                    const csvData = parseCSV(event.target.result);
+                    savedPlaces = [...savedPlaces, ...csvData];
+                    renderAtlas();
                 };
                 reader.readAsText(file);
             });
-            alert("Atlas Data Integrated.");
+            alert("CSV Data Integrated.");
         });
 
-        // --- TOGGLE LIST LOGIC ---
-        const moreBtn = document.getElementById('more-btn');
-        moreBtn.addEventListener('click', () => {
-            const l15 = document.getElementById('list-15min');
-            l15.classList.toggle('hidden');
-            moreBtn.innerText = l15.classList.contains('hidden') ? 
-                '[ search for more within 15mins ]' : '[ collapse extended reach ]';
+        document.getElementById('more-btn').addEventListener('click', () => {
+            document.getElementById('list-15min').classList.toggle('hidden');
         });
     </script>
 </body>
