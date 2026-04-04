@@ -84,7 +84,7 @@
         <div id="list-15min" class="hidden mt-6 space-y-6 pt-2 text-white/40 font-normal"></div>
     </div>
 
-    <script>
+   <script>
     let userLocation = null;
     let savedPlaces = [];
 
@@ -122,32 +122,45 @@
         }, { enableHighAccuracy: true });
     }
 
-    // --- SMARTER CSV PARSER ---
+    // --- AGGRESSIVE CSV PARSER ---
     function parseCSV(text) {
-        const lines = text.split(/\r?\n/); // Handles Windows and Mac line breaks
+        const lines = text.split(/\r?\n/).filter(line => line.trim() !== "");
         if (lines.length < 2) return [];
 
-        const headers = lines[0].toLowerCase().split(',');
+        const headers = lines[0].split(',').map(h => h.toLowerCase().trim());
         
-        // Find Column Indexes by keywords
-        const nameIdx = headers.findIndex(h => h.includes('name') || h.includes('title') || h.includes('label'));
-        const latIdx = headers.findIndex(h => h.includes('lat') || h.includes('y'));
-        const lngIdx = headers.findIndex(h => h.includes('long') || h.includes('lng') || h.includes('x'));
+        // 1. Try to find indexes by common Google keywords
+        let nameIdx = headers.findIndex(h => h.includes('title') || h.includes('name') || h.includes('label'));
+        let latIdx = headers.findIndex(h => h.includes('lat') || h.includes('y') || h.includes('latitude'));
+        let lngIdx = headers.findIndex(h => h.includes('long') || h.includes('lng') || h.includes('x') || h.includes('longitude'));
 
         const result = [];
+
         for (let i = 1; i < lines.length; i++) {
-            const row = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/); // Clever split to ignore commas inside quotes
-            if (row.length > 1) {
-                const lat = parseFloat(row[latIdx]);
-                const lng = parseFloat(row[lngIdx]);
-                
-                if (!isNaN(lat) && !isNaN(lng)) {
-                    result.push({
-                        name: row[nameIdx]?.replace(/"/g, '').trim() || 'Saved Spot',
-                        lat: lat,
-                        lng: lng
-                    });
+            // Regex to handle commas inside quotes (common in addresses)
+            const row = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+            
+            let lat, lng, name;
+
+            // 2. If keywords failed, guess based on data format
+            if (latIdx === -1 || lngIdx === -1) {
+                for (let j = 0; j < row.length; j++) {
+                    const val = parseFloat(row[j]);
+                    // GPS coordinates are usually between -180 and 180
+                    if (!isNaN(val) && val !== 0) {
+                        if (Math.abs(val) < 90 && lat === undefined) lat = val;
+                        else if (Math.abs(val) <= 180 && lng === undefined) lng = val;
+                    }
                 }
+            } else {
+                lat = parseFloat(row[latIdx]);
+                lng = parseFloat(row[lngIdx]);
+            }
+
+            name = row[nameIdx]?.replace(/"/g, '').trim() || "Saved Spot";
+
+            if (!isNaN(lat) && !isNaN(lng)) {
+                result.push({ name, lat, lng });
             }
         }
         return result;
@@ -158,11 +171,7 @@
         const list15 = document.getElementById('list-15min');
         
         if (!userLocation) return;
-        if (savedPlaces.length === 0) {
-            list10.innerHTML = '<div class="opacity-30 text-xs font-normal italic">No places found in this CSV...</div>';
-            return;
-        }
-
+        
         list10.innerHTML = ""; 
         list15.innerHTML = "";
 
@@ -171,30 +180,30 @@
         })
         .sort((a, b) => a.minutes - b.minutes);
 
-        let count = 0;
+        let foundNearby = false;
         sorted.forEach(place => {
+            const isVeryClose = place.minutes <= 5;
             const element = document.createElement('div');
             element.className = "flex justify-between items-end fade-in font-normal mb-6";
-            const isVeryClose = place.minutes <= 5;
             
             element.innerHTML = `
                 <div class="flex flex-col">
-                    <span class="text-sm tracking-widest uppercase ${isVeryClose ? 'text-white font-bold' : 'text-white/70'}">${place.name}</span>
+                    <span class="text-sm tracking-widest uppercase ${isVeryClose ? 'text-white' : 'text-white/70'}">${place.name}</span>
                 </div>
                 <span class="text-[9px] font-mono uppercase tracking-tighter ${isVeryClose ? 'text-indigo-400' : 'opacity-30'}">${place.minutes} MIN WALK</span>
             `;
 
             if (place.minutes <= 10) {
                 list10.appendChild(element);
-                count++;
+                foundNearby = true;
             } else if (place.minutes <= 15) {
                 list15.appendChild(element);
-                count++;
+                foundNearby = true;
             }
         });
 
-        if (count === 0) {
-            list10.innerHTML = '<div class="opacity-30 text-xs font-normal italic">Atlas synced, but no pins are within 15 mins of you.</div>';
+        if (!foundNearby && savedPlaces.length > 0) {
+            list10.innerHTML = '<div class="opacity-30 text-xs font-normal">Atlas Synced. No pins within 15 mins of your current location.</div>';
         }
     }
 
@@ -206,9 +215,9 @@
                 if (csvData.length > 0) {
                     savedPlaces = [...savedPlaces, ...csvData];
                     renderAtlas();
-                    alert(`Success: Integrated ${csvData.length} spots from ${file.name}`);
+                    alert(`Success: ${csvData.length} spots added.`);
                 } else {
-                    alert(`Error: Could not find Latitude/Longitude columns in ${file.name}`);
+                    alert("Could not find location data. Please check the CSV file headers.");
                 }
             };
             reader.readAsText(file);
