@@ -9,29 +9,35 @@
     <script src="https://cdn.tailwindcss.com"></script>
     
     <!-- 2. Your Styles (The Look) -->
-    <style>
-        @font-face {
-            font-family: 'DINdong';
-            src: url('DINdong.otf') format('opentype');
-            font-display: swap;
-        }
+   <style>
+    @font-face {
+        font-family: 'DINdong';
+        src: url('DINdong.otf') format('opentype');
+        font-display: swap;
+        font-style: normal; /* Forces normal style at the font level */
+    }
 
-        body { 
-            font-family: 'DINdong', sans-serif; 
-            background: #0a0a0a; 
-            color: white; 
-            overflow: hidden; 
-        }
+    body { 
+        font-family: 'DINdong', sans-serif; 
+        background: #0a0a0a; 
+        color: white; 
+        overflow: hidden; 
+        font-style: normal !important; /* Overrides any inherited italics */
+    }
 
-        .serif { font-family: 'DINdong', serif; }
+    /* Removed 'italic' from here */
+    .serif { 
+        font-family: 'DINdong', serif; 
+        font-style: normal; 
+    }
 
-        .glass { 
-            background: rgba(255, 255, 255, 0.03); 
-            backdrop-filter: blur(25px); 
-            -webkit-backdrop-filter: blur(25px);
-            border: 1px solid rgba(255, 255, 255, 0.1); 
-        }
-    </style>
+    .glass { 
+        background: rgba(255, 255, 255, 0.03); 
+        backdrop-filter: blur(25px); 
+        -webkit-backdrop-filter: blur(25px);
+        border: 1px solid rgba(255, 255, 255, 0.1); 
+    }
+</style>
 </head>
 
 <body class="h-screen flex items-center justify-center">
