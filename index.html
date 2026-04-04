@@ -66,35 +66,93 @@
     </div>
 
     <!-- 3. The Brain (Must be at the BOTTOM) -->
-    <script>
-        const moreBtn = document.getElementById('more-btn');
-        const list15 = document.getElementById('list-15min');
+  <script>
+    let userLocation = null;
+    let savedPlaces = [];
 
-        moreBtn.addEventListener('click', () => {
-            list15.classList.toggle('hidden');
-            moreBtn.innerText = list15.classList.contains('hidden') ? 
-                '[ search for more within 15mins ]' : '[ showing extended reach ]';
-        });
+    // 1. The Math Engine (Haversine Formula)
+    function calculateWalkingMinutes(lat1, lon1, lat2, lon2) {
+        const R = 6371; // Earth's radius in km
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+                  Math.sin(dLon/2) * Math.sin(dLon/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        const distanceKm = R * c;
+        
+        // Average walking speed is roughly 5km/h
+        // (Distance / 5) * 60 minutes
+        return Math.round((distanceKm / 5) * 60);
+    }
 
-        const fileInput = document.getElementById('fileInput');
+    // 2. The Location Engine
+    function startTracking() {
+        if (navigator.geolocation) {
+            navigator.geolocation.watchPosition((position) => {
+                userLocation = {
+                    lat: position.coords.latitude,
+                    lng: position.coords.longitude
+                };
+                updateUI();
+            }, (error) => {
+                console.error("Location access denied.");
+            }, { enableHighAccuracy: true });
+        }
+    }
 
-        fileInput.addEventListener('change', (event) => {
-            const file = event.target.files[0];
-            const reader = new FileReader();
+    // 3. UI Update Engine
+    function updateUI() {
+        if (!userLocation || savedPlaces.length === 0) return;
 
-            reader.onload = (e) => {
-                try {
-                    const data = JSON.parse(e.target.result);
-                    // Standard Google Takeout usually sits inside "features"
-                    const count = data.features ? data.features.length : (Array.isArray(data) ? data.length : 0);
-                    alert("Success! Found " + count + " artistic pins.");
-                } catch (err) {
-                    alert("Error reading file. Make sure it is a valid .json from Google.");
+        const list10 = document.getElementById('list-10min');
+        list10.innerHTML = ""; // Clear current list
+
+        savedPlaces.forEach(place => {
+            // Google JSON structure usually: place.geometry.coordinates [lng, lat]
+            const coords = place.geometry.coordinates;
+            const minutes = calculateWalkingMinutes(userLocation.lat, userLocation.lng, coords[1], coords[0]);
+
+            if (minutes <= 10) {
+                const item = document.createElement('div');
+                item.className = "flex justify-between items-center opacity-80 animate-in fade-in duration-500";
+                item.innerHTML = `
+                    <span class="font-light tracking-wide">${place.properties.name || 'Saved Spot'}</span>
+                    <span class="text-[10px] font-mono opacity-40 uppercase">${minutes} min walk</span>
+                `;
+                list10.appendChild(item);
+                
+                // TRIGGER ALERT: If specifically within 5 mins
+                if (minutes <= 5) {
+                    console.log("Spot nearby!", place.properties.name);
+                    // In a web app, we use a simple vibration or subtle alert
                 }
-            };
-
-            reader.readAsText(file);
+            }
         });
-    </script>
+    }
+
+    // 4. File Upload Logic
+    const fileInput = document.getElementById('fileInput');
+    fileInput.addEventListener('change', (event) => {
+        const file = event.target.files[0];
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const data = JSON.parse(e.target.result);
+                savedPlaces = data.features || [];
+                alert("Atlas Initialized: " + savedPlaces.length + " pins active.");
+                startTracking(); // Start GPS after file is loaded
+            } catch (err) {
+                alert("Invalid JSON format.");
+            }
+        };
+        reader.readAsText(file);
+    });
+
+    // Expand Button Logic
+    document.getElementById('more-btn').addEventListener('click', () => {
+        document.getElementById('list-15min').classList.toggle('hidden');
+    });
+</script>
 </body>
 </html>
