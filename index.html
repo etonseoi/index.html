@@ -1,60 +1,58 @@
-<style>
-    /* This "links" your uploaded file to the name 'DINdong' */
-    @font-face {
-        font-family: 'DINdong';
-        src: url('DINdong.otf') format('opentype');
-    }
-
-    body { 
-        font-family: 'DINdong', sans-serif; /* Applied here */
-        background: #0a0a0a; 
-        color: white; 
-        overflow: hidden; 
-    }
-    
-    /* We can keep the serif for the title if you want a mix, 
-       or change .serif to 'DINdong' too! */
-    .serif { font-family: 'DINdong', serif; }
-    
-    .glass { 
-        background: rgba(255, 255, 255, 0.03); 
-        backdrop-filter: blur(20px); 
-        border: 1px solid rgba(255, 255, 255, 0.1); 
-    }
-</style>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Artistic Atlas</title>
+    
+    <!-- 1. External Tools (Tailwind) -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:italic,wght@300;600&family=Inter:wght@200;400&display=swap" rel="stylesheet">
+    
+    <!-- 2. Your Styles (The Look) -->
     <style>
-        body { font-family: 'Inter', sans-serif; background: #0a0a0a; color: white; overflow: hidden; }
-        .serif { font-family: 'Cormorant+Garamond', serif; }
-        .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        @font-face {
+            font-family: 'DINdong';
+            src: url('DINdong.otf') format('opentype');
+            font-display: swap;
+        }
+
+        body { 
+            font-family: 'DINdong', sans-serif; 
+            background: #0a0a0a; 
+            color: white; 
+            overflow: hidden; 
+        }
+
+        .serif { font-family: 'DINdong', serif; }
+
+        .glass { 
+            background: rgba(255, 255, 255, 0.03); 
+            backdrop-filter: blur(25px); 
+            -webkit-backdrop-filter: blur(25px);
+            border: 1px solid rgba(255, 255, 255, 0.1); 
+        }
     </style>
 </head>
+
 <body class="h-screen flex items-center justify-center">
 
-    <!-- The Background Art (Slow moving gradient) -->
+    <!-- The Background Art -->
     <div class="fixed inset-0 -z-10 bg-gradient-to-br from-black via-zinc-900 to-indigo-950 opacity-50"></div>
 
-    <!-- The Top Card (Your Pop-up) -->
+    <!-- The Top Card -->
     <div id="popup-card" class="fixed top-10 inset-x-4 mx-auto max-w-md glass rounded-[2rem] p-8 transform transition-all duration-1000 shadow-2xl">
+        
+        <!-- Data Initialization -->
+        <div class="mb-4">
+            <label class="text-[10px] opacity-40 uppercase tracking-widest block mb-2">Initialize Data</label>
+            <input type="file" id="fileInput" class="text-[10px] text-white/60" accept=".json">
+        </div>
+
         <h1 class="serif text-3xl italic font-light mb-6">Nearby Discoveries</h1>
-        <!-- Add this right above the "Nearby Discoveries" title -->
-<div class="mb-4">
-    <label class="text-[10px] opacity-40 uppercase tracking-widest block mb-2">Initialize Data</label>
-    <input type="file" id="fileInput" class="text-[10px] text-white/60" accept=".json">
-</div>
         
         <div id="list-10min" class="space-y-4">
-            <!-- Items will appear here -->
             <div class="flex justify-between items-center opacity-80">
-                <span class="font-light tracking-wide">The Blue Cafe</span>
-                <span class="text-[10px] font-mono tracking-tighter uppercase opacity-40">4 min walk</span>
+                <span class="font-light tracking-wide italic">Upload your JSON to begin</span>
             </div>
         </div>
 
@@ -62,39 +60,41 @@
             [ search for more within 15mins ]
         </button>
 
-        <div id="list-15min" class="hidden mt-4 space-y-4 pt-4 border-t border-white/5 animate-pulse">
-            <div class="flex justify-between items-center opacity-50">
-                <span class="font-light tracking-wide">Hidden Gallery</span>
-                <span class="text-[10px] font-mono opacity-40">12 min walk</span>
-            </div>
+        <div id="list-15min" class="hidden mt-4 space-y-4 pt-4 border-t border-white/5 animate-pulse text-white/40 text-xs">
+            Search range extended...
         </div>
     </div>
 
+    <!-- 3. The Brain (Must be at the BOTTOM) -->
     <script>
-        // Simple logic to show more items
         const moreBtn = document.getElementById('more-btn');
         const list15 = document.getElementById('list-15min');
 
         moreBtn.addEventListener('click', () => {
             list15.classList.toggle('hidden');
-            moreBtn.innerText = list15.classList.contains('hidden') ? '[ search for more within 15mins ]' : '[ showing extended reach ]';
+            moreBtn.innerText = list15.classList.contains('hidden') ? 
+                '[ search for more within 15mins ]' : '[ showing extended reach ]';
         });
+
         const fileInput = document.getElementById('fileInput');
 
-fileInput.addEventListener('change', (event) => {
-    const file = event.target.files[0];
-    const reader = new FileReader();
+        fileInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            const reader = new FileReader();
 
-    reader.onload = (e) => {
-        const data = JSON.parse(e.target.result);
-        // This is where we will process your Google Pins!
-        console.log("Pins loaded:", data.features.length);
-        alert("Found " + data.features.length + " saved places!");
-    };
+            reader.onload = (e) => {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    // Standard Google Takeout usually sits inside "features"
+                    const count = data.features ? data.features.length : (Array.isArray(data) ? data.length : 0);
+                    alert("Success! Found " + count + " artistic pins.");
+                } catch (err) {
+                    alert("Error reading file. Make sure it is a valid .json from Google.");
+                }
+            };
 
-    reader.readAsText(file);
-});
+            reader.readAsText(file);
+        });
     </script>
 </body>
 </html>
-
