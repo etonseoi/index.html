@@ -44,6 +44,11 @@
     <!-- The Top Card (Your Pop-up) -->
     <div id="popup-card" class="fixed top-10 inset-x-4 mx-auto max-w-md glass rounded-[2rem] p-8 transform transition-all duration-1000 shadow-2xl">
         <h1 class="serif text-3xl italic font-light mb-6">Nearby Discoveries</h1>
+        <!-- Add this right above the "Nearby Discoveries" title -->
+<div class="mb-4">
+    <label class="text-[10px] opacity-40 uppercase tracking-widest block mb-2">Initialize Data</label>
+    <input type="file" id="fileInput" class="text-[10px] text-white/60" accept=".json">
+</div>
         
         <div id="list-10min" class="space-y-4">
             <!-- Items will appear here -->
@@ -74,6 +79,22 @@
             list15.classList.toggle('hidden');
             moreBtn.innerText = list15.classList.contains('hidden') ? '[ search for more within 15mins ]' : '[ showing extended reach ]';
         });
+        const fileInput = document.getElementById('fileInput');
+
+fileInput.addEventListener('change', (event) => {
+    const file = event.target.files[0];
+    const reader = new FileReader();
+
+    reader.onload = (e) => {
+        const data = JSON.parse(e.target.result);
+        // This is where we will process your Google Pins!
+        console.log("Pins loaded:", data.features.length);
+        alert("Found " + data.features.length + " saved places!");
+    };
+
+    reader.readAsText(file);
+});
     </script>
 </body>
 </html>
+
