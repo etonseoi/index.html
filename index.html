@@ -6,124 +6,7 @@
     <title>Artistic Atlas</title>
     
     <!-- Design Tools -->
-    <script>
-    let userLocation = null;
-    let savedPlaces = [];
-
-    // --- MATH ENGINE ---
-    function getMinutes(lat1, lon1, lat2, lon2) {
-        const R = 6371; 
-        const dLat = (lat2 - lat1) * Math.PI / 180;
-        const dLon = (lon2 - lon1) * Math.PI / 180;
-        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-                  Math.sin(dLon/2) * Math.sin(dLon/2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-        const distanceKm = R * c;
-        return Math.round((distanceKm / 5) * 60); 
-    }
-
-    // --- LOCATION ENGINE (Improved for iOS) ---
-    function startScanning() {
-        // Change button look immediately to show it clicked
-        const btn = event.currentTarget;
-        btn.innerText = "System Scanning...";
-        btn.style.background = "rgba(129, 140, 248, 0.1)";
-
-        const geoOptions = {
-            enableHighAccuracy: true,
-            maximumAge: 0,
-            timeout: 10000
-        };
-
-        // First, get a single "hit" to wake up the GPS
-        navigator.geolocation.getCurrentPosition((pos) => {
-            userLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-            renderAtlas();
-            
-            // Then, start the continuous watch
-            navigator.geolocation.watchPosition((position) => {
-                userLocation = { lat: position.coords.latitude, lng: position.coords.longitude };
-                renderAtlas();
-            }, null, geoOptions);
-
-        }, (err) => {
-            alert("GPS Error: " + err.message);
-            btn.innerText = "Enable Real-Time Location";
-        }, geoOptions);
-    }
-
-    // --- UI ENGINE ---
-    function renderAtlas() {
-        if (!userLocation || savedPlaces.length === 0) return;
-
-        const list10 = document.getElementById('list-10min');
-        const list15 = document.getElementById('list-15min');
-        list10.innerHTML = ""; 
-        list15.innerHTML = "";
-
-        const sorted = savedPlaces.map(place => {
-            const coords = place.geometry ? place.geometry.coordinates : null;
-            if (!coords) return null;
-            const minutes = getMinutes(userLocation.lat, userLocation.lng, coords[1], coords[0]);
-            return { ...place, minutes };
-        })
-        .filter(p => p !== null)
-        .sort((a, b) => a.minutes - b.minutes);
-
-        sorted.forEach(place => {
-            const element = document.createElement('div');
-            element.className = "flex justify-between items-end fade-in font-normal";
-            
-            const isVeryClose = place.minutes <= 5;
-            const timeColor = isVeryClose ? "text-indigo-400 opacity-100" : "opacity-30";
-            const nameColor = isVeryClose ? "text-white" : "text-white/70";
-
-            // If a new place enters the 5-min zone, vibrate the phone
-            if (isVeryClose && window.navigator.vibrate) {
-                window.navigator.vibrate([100, 50, 100]);
-            }
-
-            element.innerHTML = `
-                <div class="flex flex-col">
-                    <span class="text-sm tracking-widest uppercase ${nameColor}">${place.properties.name || 'Unnamed Spot'}</span>
-                </div>
-                <span class="text-[9px] font-mono uppercase tracking-tighter ${timeColor}">${place.minutes} MIN WALK</span>
-            `;
-
-            if (place.minutes <= 10) {
-                list10.appendChild(element);
-            } else if (place.minutes <= 15) {
-                list15.appendChild(element);
-            }
-        });
-    }
-
-    // --- MULTI-FILE HANDLER ---
-    const fileInput = document.getElementById('fileInput');
-    fileInput.addEventListener('change', (e) => {
-        const files = e.target.files;
-        Array.from(files).forEach(file => {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                try {
-                    const json = JSON.parse(event.target.result);
-                    const newPins = json.features || [];
-                    savedPlaces = [...savedPlaces, ...newPins];
-                    renderAtlas();
-                } catch (err) { console.error("JSON Error"); }
-            };
-            reader.readAsText(file);
-        });
-        alert("Data Integrated. Move around to discover.");
-    });
-
-    // Toggle Button
-    document.getElementById('more-btn').addEventListener('click', () => {
-        const l15 = document.getElementById('list-15min');
-        l15.classList.toggle('hidden');
-    });
-</script>
+    <script src="https://cdn.tailwindcss.com"></script>
     
     <style>
         /* 1. Custom Font Integration */
@@ -184,8 +67,8 @@
         
         <!-- Step 1: GPS Activation -->
         <div class="mb-6">
-            <label class="text-[9px] opacity-30 uppercase tracking-[0.4em] block mb-3 font-normal">Step 1: Authorization</label>
-            <button onclick="startScanning()" class="w-full py-3 border border-white/10 rounded-full text-[10px] tracking-widest uppercase hover:bg-white/5 transition-all">
+            <label id="gps-label" class="text-[9px] opacity-30 uppercase tracking-[0.4em] block mb-3 font-normal">Step 1: Authorization</label>
+            <button onclick="startScanning(event)" class="w-full py-3 border border-white/10 rounded-full text-[10px] tracking-widest uppercase hover:bg-white/5 transition-all">
                 Enable Real-Time Location
             </button>
         </div>
@@ -205,4 +88,5 @@
             </div>
         </div>
 
-        <!-- Extension Trigger
+        <!-- Extension Trigger -->
+        <button id="more-btn" class="mt-12 w-full py-4 text-[10px] tracking-[0.4em] text-white/20 hover:text-white/70 transition-all uppercase border-
