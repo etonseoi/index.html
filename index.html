@@ -4,10 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Artistic Atlas</title>
-    
-    <!-- Design Tools -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
     <style>
         @font-face {
             font-family: 'DINdong';
@@ -15,219 +12,113 @@
             font-display: swap;
             font-style: normal;
         }
-
         body { 
             font-family: 'DINdong', sans-serif; 
-            background: #0a0a0a; 
-            color: white; 
-            overflow: hidden; 
-            font-style: normal !important;
-            -webkit-font-smoothing: antialiased;
+            background: #0a0a0a; color: white; overflow: hidden; 
+            font-style: normal !important; -webkit-font-smoothing: antialiased;
         }
-
         .serif { font-family: 'DINdong', serif; font-style: normal; }
-
         .glass { 
             background: rgba(255, 255, 255, 0.03); 
-            backdrop-filter: blur(35px); 
-            -webkit-backdrop-filter: blur(35px);
+            backdrop-filter: blur(35px); -webkit-backdrop-filter: blur(35px);
             border: 1px solid rgba(255, 255, 255, 0.1); 
         }
-
-        .fade-in {
-            animation: fadeIn 0.8s ease-out forwards;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
+        .fade-in { animation: fadeIn 0.8s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .custom-scroll::-webkit-scrollbar { width: 2px; }
-        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
         .custom-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); }
     </style>
 </head>
-
 <body class="h-screen flex items-center justify-center">
-
     <div class="fixed inset-0 -z-10 bg-gradient-to-br from-black via-zinc-900 to-indigo-950 opacity-60"></div>
-
     <div id="popup-card" class="fixed top-10 inset-x-4 mx-auto max-w-md glass rounded-[2.5rem] p-10 shadow-2xl transition-all duration-1000">
-        
-        <!-- Step 1: GPS Activation -->
         <div class="mb-6">
             <label id="gps-label" class="text-[9px] opacity-30 uppercase tracking-[0.4em] block mb-3 font-normal">Step 1: Authorization</label>
-            <button id="gps-btn" onclick="startScanning()" class="w-full py-3 border border-white/10 rounded-full text-[10px] tracking-widest uppercase hover:bg-white/5 transition-all">
-                Enable Real-Time Location
-            </button>
+            <button id="gps-btn" onclick="startScanning()" class="w-full py-3 border border-white/10 rounded-full text-[10px] tracking-widest uppercase hover:bg-white/5 transition-all">Enable Real-Time Location</button>
         </div>
-
-        <!-- Step 2: Data Loading -->
         <div class="mb-10">
-            <label class="text-[9px] opacity-30 uppercase tracking-[0.4em] block mb-3 font-normal">Step 2: Initialize Atlas (CSV)</label>
-            <input type="file" id="fileInput" multiple class="text-[10px] text-white/40 font-normal file:bg-white/10 file:border-none file:text-white/80 file:rounded-full file:px-4 file:py-1 file:mr-3 cursor-pointer" accept=".csv">
+            <label class="text-[9px] opacity-30 uppercase tracking-[0.4em] block mb-3 font-normal">Step 2: Initialize Atlas</label>
+            <input type="file" id="fileInput" multiple class="text-[10px] text-white/40 font-normal file:bg-white/10 file:border-none file:text-white/80 file:rounded-full file:px-4 file:py-1 file:mr-3 cursor-pointer" accept=".json">
         </div>
-
         <h1 class="serif text-3xl font-light mb-8 uppercase tracking-[0.1em]">Nearby Discoveries</h1>
-        
         <div id="list-10min" class="space-y-6 max-h-[30vh] overflow-y-auto custom-scroll pr-2">
-            <div class="opacity-30 text-xs font-light tracking-wide font-normal">
-                Awaiting data synchronization...
-            </div>
+            <div class="opacity-30 text-xs font-light tracking-wide font-normal">Waiting for local data...</div>
         </div>
-
-        <button id="more-btn" class="mt-12 w-full py-4 text-[10px] tracking-[0.4em] text-white/20 hover:text-white/70 transition-all uppercase border-t border-white/5 font-normal">
-            [ search for more within 15mins ]
-        </button>
-
+        <button id="more-btn" class="mt-12 w-full py-4 text-[10px] tracking-[0.4em] text-white/20 hover:text-white/70 transition-all uppercase border-t border-white/5 font-normal">[ search for more within 15mins ]</button>
         <div id="list-15min" class="hidden mt-6 space-y-6 pt-2 text-white/40 font-normal"></div>
     </div>
 
-   <script>
-    let userLocation = null;
-    let savedPlaces = [];
+    <script>
+        let userLocation = null;
+        let savedPlaces = [];
 
-    function getMinutes(lat1, lon1, lat2, lon2) {
-        const R = 6371; 
-        const dLat = (lat2 - lat1) * Math.PI / 180;
-        const dLon = (lon2 - lon1) * Math.PI / 180;
-        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-                  Math.sin(dLon/2) * Math.sin(dLon/2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-        return Math.round(((R * c) / 5) * 60); 
-    }
+        function getMinutes(lat1, lon1, lat2, lon2) {
+            const R = 6371; 
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return Math.round(((R * c) / 5) * 60); 
+        }
 
-    function startScanning() {
-        const label = document.getElementById('gps-label');
-        const btn = document.getElementById('gps-btn');
-        label.innerText = "Requesting Access...";
-        
-        navigator.geolocation.getCurrentPosition((pos) => {
-            userLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-            label.innerText = "GPS ACTIVE";
-            label.style.color = "#818cf8";
-            btn.innerText = "Location Synced";
-            btn.style.opacity = "0.3";
-            btn.disabled = true;
-            renderAtlas();
-
-            navigator.geolocation.watchPosition((p) => {
-                userLocation = { lat: p.coords.latitude, lng: p.coords.longitude };
+        function startScanning() {
+            const label = document.getElementById('gps-label');
+            const btn = document.getElementById('gps-btn');
+            label.innerText = "Requesting Access...";
+            navigator.geolocation.getCurrentPosition((pos) => {
+                userLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                label.innerText = "GPS ACTIVE"; label.style.color = "#818cf8";
+                btn.innerText = "Location Synced"; btn.style.opacity = "0.3"; btn.disabled = true;
                 renderAtlas();
-            }, null, { enableHighAccuracy: true });
-        }, (err) => {
-            alert("GPS Error: " + err.message);
-        }, { enableHighAccuracy: true });
-    }
-
-    // --- AGGRESSIVE CSV PARSER ---
-    function parseCSV(text) {
-        const lines = text.split(/\r?\n/).filter(line => line.trim() !== "");
-        if (lines.length < 2) return [];
-
-        const headers = lines[0].split(',').map(h => h.toLowerCase().trim());
-        
-        // 1. Try to find indexes by common Google keywords
-        let nameIdx = headers.findIndex(h => h.includes('title') || h.includes('name') || h.includes('label'));
-        let latIdx = headers.findIndex(h => h.includes('lat') || h.includes('y') || h.includes('latitude'));
-        let lngIdx = headers.findIndex(h => h.includes('long') || h.includes('lng') || h.includes('x') || h.includes('longitude'));
-
-        const result = [];
-
-        for (let i = 1; i < lines.length; i++) {
-            // Regex to handle commas inside quotes (common in addresses)
-            const row = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-            
-            let lat, lng, name;
-
-            // 2. If keywords failed, guess based on data format
-            if (latIdx === -1 || lngIdx === -1) {
-                for (let j = 0; j < row.length; j++) {
-                    const val = parseFloat(row[j]);
-                    // GPS coordinates are usually between -180 and 180
-                    if (!isNaN(val) && val !== 0) {
-                        if (Math.abs(val) < 90 && lat === undefined) lat = val;
-                        else if (Math.abs(val) <= 180 && lng === undefined) lng = val;
-                    }
-                }
-            } else {
-                lat = parseFloat(row[latIdx]);
-                lng = parseFloat(row[lngIdx]);
-            }
-
-            name = row[nameIdx]?.replace(/"/g, '').trim() || "Saved Spot";
-
-            if (!isNaN(lat) && !isNaN(lng)) {
-                result.push({ name, lat, lng });
-            }
-        }
-        return result;
-    }
-
-    function renderAtlas() {
-        const list10 = document.getElementById('list-10min');
-        const list15 = document.getElementById('list-15min');
-        
-        if (!userLocation) return;
-        
-        list10.innerHTML = ""; 
-        list15.innerHTML = "";
-
-        const sorted = savedPlaces.map(place => {
-            return { ...place, minutes: getMinutes(userLocation.lat, userLocation.lng, place.lat, place.lng) };
-        })
-        .sort((a, b) => a.minutes - b.minutes);
-
-        let foundNearby = false;
-        sorted.forEach(place => {
-            const isVeryClose = place.minutes <= 5;
-            const element = document.createElement('div');
-            element.className = "flex justify-between items-end fade-in font-normal mb-6";
-            
-            element.innerHTML = `
-                <div class="flex flex-col">
-                    <span class="text-sm tracking-widest uppercase ${isVeryClose ? 'text-white' : 'text-white/70'}">${place.name}</span>
-                </div>
-                <span class="text-[9px] font-mono uppercase tracking-tighter ${isVeryClose ? 'text-indigo-400' : 'opacity-30'}">${place.minutes} MIN WALK</span>
-            `;
-
-            if (place.minutes <= 10) {
-                list10.appendChild(element);
-                foundNearby = true;
-            } else if (place.minutes <= 15) {
-                list15.appendChild(element);
-                foundNearby = true;
-            }
-        });
-
-        if (!foundNearby && savedPlaces.length > 0) {
-            list10.innerHTML = '<div class="opacity-30 text-xs font-normal">Atlas Synced. No pins within 15 mins of your current location.</div>';
-        }
-    }
-
-    document.getElementById('fileInput').addEventListener('change', (e) => {
-        Array.from(e.target.files).forEach(file => {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                const csvData = parseCSV(event.target.result);
-                if (csvData.length > 0) {
-                    savedPlaces = [...savedPlaces, ...csvData];
+                navigator.geolocation.watchPosition((p) => {
+                    userLocation = { lat: p.coords.latitude, lng: p.coords.longitude };
                     renderAtlas();
-                    alert(`Success: ${csvData.length} spots added.`);
-                } else {
-                    alert("Could not find location data. Please check the CSV file headers.");
-                }
-            };
-            reader.readAsText(file);
-        });
-    });
+                }, null, { enableHighAccuracy: true });
+            }, (err) => alert("GPS Error: " + err.message), { enableHighAccuracy: true });
+        }
 
-    document.getElementById('more-btn').addEventListener('click', () => {
-        document.getElementById('list-15min').classList.toggle('hidden');
-    });
-</script>
-    
+        function renderAtlas() {
+            const list10 = document.getElementById('list-10min');
+            const list15 = document.getElementById('list-15min');
+            if (!userLocation || savedPlaces.length === 0) return;
+            list10.innerHTML = ""; list15.innerHTML = "";
+
+            const sorted = savedPlaces.map(place => {
+                // Mapping the specific JSON structure provided in the source
+                const coords = place.geometry ? place.geometry.coordinates : null;
+                if (!coords) return null;
+                const name = place.properties?.location?.name || place.properties?.name || "Unknown Place";
+                return { name, minutes: getMinutes(userLocation.lat, userLocation.lng, coords[1], coords[0]) };
+            }).filter(p => p !== null).sort((a, b) => a.minutes - b.minutes);
+
+            sorted.forEach(place => {
+                const isVeryClose = place.minutes <= 5;
+                const element = document.createElement('div');
+                element.className = "flex justify-between items-end fade-in font-normal mb-6";
+                element.innerHTML = `<div class="flex flex-col"><span class="text-sm tracking-widest uppercase ${isVeryClose ? 'text-white' : 'text-white/70'}">${place.name}</span></div>
+                                     <span class="text-[9px] font-mono uppercase tracking-tighter ${isVeryClose ? 'text-indigo-400' : 'opacity-30'}">${place.minutes} MIN WALK</span>`;
+                if (place.minutes <= 10) list10.appendChild(element);
+                else if (place.minutes <= 15) list15.appendChild(element);
+            });
+        }
+
+        document.getElementById('fileInput').addEventListener('change', (e) => {
+            Array.from(e.target.files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const json = JSON.parse(event.target.result);
+                        const newPins = json.features || [];
+                        savedPlaces = [...savedPlaces, ...newPins];
+                        renderAtlas();
+                        alert(`Successfully added ${newPins.length} pins.`);
+                    } catch (err) { alert("Error reading JSON file structure."); }
+                };
+                reader.readAsText(file);
+            });
+        });
+
+        document.getElementById('more-btn').addEventListener('click', () => document.getElementById('list-15min').classList.toggle('hidden'));
+    </script>
 </body>
 </html>
