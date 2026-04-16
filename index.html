@@ -6,15 +6,10 @@
     <title>Artistic Atlas</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @font-face { font-family: 'DINdong'; src: url('DINdong.otf'); font-style: normal; }
+        @font-face { font-family: 'DINdong'; src: url('DINdong.otf'); }
         body { font-family: 'DINdong', sans-serif; background: #000; color: white; overflow: hidden; }
         .glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px); border: 1px solid rgba(255, 255, 255, 0.1); }
-        
-        #push-banner { 
-            transform: translateY(-130%); 
-            transition: transform 0.6s cubic-bezier(0.19, 1, 0.22, 1); 
-            box-shadow: 0 20px 50px rgba(0,0,0,0.9);
-        }
+        #push-banner { transform: translateY(-130%); transition: transform 0.6s cubic-bezier(0.19, 1, 0.22, 1); box-shadow: 0 20px 50px rgba(0,0,0,0.9); }
         #push-banner.show { transform: translateY(0); }
     </style>
 </head>
@@ -22,29 +17,25 @@
 
     <div id="push-banner" class="fixed top-6 inset-x-4 mx-auto max-w-sm glass z-50 p-5 rounded-[2rem] flex items-center border-white/20">
         <div class="bg-indigo-500 w-3 h-3 rounded-full animate-ping mr-4"></div>
-        <div class="flex-1">
-            <p class="text-[9px] uppercase tracking-[0.3em] text-indigo-400 font-bold mb-1">Atlas Alert</p>
-            <p id="banner-text" class="text-sm text-white font-medium uppercase tracking-widest">Notification System Active</p>
-        </div>
+        <div class="flex-1 text-xs text-white uppercase tracking-widest" id="banner-text">Discovery Alert</div>
     </div>
 
-    <div class="fixed inset-0 -z-10 bg-gradient-to-t from-black via-zinc-950 to-indigo-950/30"></div>
-
-    <div class="w-full max-w-md glass rounded-[3rem] p-10 shadow-2xl">
-        <div class="mb-8 flex gap-4">
-            <button onclick="startScanning()" class="flex-1 py-4 border border-indigo-500/30 rounded-full text-[9px] tracking-[0.2em] uppercase bg-indigo-500/10">1. Start GPS</button>
-            <button onclick="triggerPush('Test Success!')" class="px-6 py-4 border border-white/10 rounded-full text-[9px] tracking-[0.2em] uppercase">Test Alert</button>
+    <div class="w-full max-w-md glass rounded-[3rem] p-8">
+        <div class="flex gap-2 mb-6">
+            <button onclick="startScanning()" class="flex-1 py-3 border border-indigo-500/30 rounded-full text-[8px] tracking-widest uppercase bg-indigo-500/10">1. Sync GPS</button>
+            <button onclick="triggerPush('Notification System Online')" class="px-4 py-3 border border-white/10 rounded-full text-[8px] tracking-widest uppercase">Test Alert</button>
         </div>
 
-        <div class="mb-12">
-            <label class="text-[9px] opacity-30 uppercase tracking-[0.5em] block mb-4">2. Upload Pins</label>
-            <input type="file" id="fileInput" multiple class="text-[9px] text-white/40 file:bg-white/10 file:border-none file:text-white/70 file:rounded-full file:px-4 file:py-2 cursor-pointer">
+        <input type="file" id="fileInput" multiple class="w-full mb-8 text-[9px] text-white/40 file:bg-white/10 file:border-none file:text-white/70 file:rounded-full file:px-4 file:py-2">
+
+        <h1 class="text-xl font-light mb-4 uppercase tracking-[0.2em]">Nearby (15m Walk)</h1>
+        <div id="nearby-list" class="space-y-4 max-h-[20vh] overflow-y-auto mb-8">
+            <p class="opacity-20 text-[9px] uppercase">No coordinates found nearby.</p>
         </div>
 
-        <h1 class="text-2xl font-light mb-6 uppercase tracking-[0.2em]">Nearby</h1>
-        
-        <div id="list-container" class="space-y-6 max-h-[30vh] overflow-y-auto">
-            <p class="opacity-20 text-[10px] uppercase tracking-widest text-center">No pins within walking distance.</p>
+        <h1 class="text-xl font-light mb-4 uppercase tracking-[0.2em] opacity-40">Missing Location Data</h1>
+        <div id="missing-list" class="space-y-2 max-h-[20vh] overflow-y-auto opacity-30 text-[9px] uppercase">
+            <p>Upload a file to see details.</p>
         </div>
     </div>
 
@@ -64,21 +55,23 @@
             document.getElementById('banner-text').innerText = name;
             banner.classList.add('show');
             if (window.navigator.vibrate) window.navigator.vibrate([200, 100, 200]);
-            setTimeout(() => banner.classList.remove('show'), 5000);
+            setTimeout(() => banner.classList.remove('show'), 4000);
         }
 
         document.getElementById('fileInput').addEventListener('change', (e) => {
             Array.from(e.target.files).forEach(file => {
                 const reader = new FileReader();
                 reader.onload = (event) => {
-                    const json = JSON.parse(event.target.result);
-                    const features = json.features || [];
-                    features.forEach(f => {
-                        if (f.geometry?.coordinates) {
+                    const text = event.target.result;
+                    const lines = text.split('\n');
+                    lines.slice(1).forEach(line => {
+                        const parts = line.split(',');
+                        if (parts[0]) {
+                            // This part looks for coordinates. Your CSV has none, so lat/lng will be null.
                             savedPlaces.push({
-                                name: f.properties?.location?.name || f.properties?.name || "Spot",
-                                lat: f.geometry.coordinates[1],
-                                lng: f.geometry.coordinates[0]
+                                name: parts[0].replace(/"/g, '').trim(),
+                                lat: parseFloat(parts[4]) || null, 
+                                lng: parseFloat(parts[5]) || null
                             });
                         }
                     });
@@ -93,30 +86,25 @@
             const dLat = (lat2 - lat1) * Math.PI / 180;
             const dLon = (lon2 - lon1) * Math.PI / 180;
             const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
-            return Math.round(((R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))) / 5) * 60); 
+            const dist = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return Math.round((dist / 5) * 60);
         }
 
         function updateUI() {
-            const list = document.getElementById('list-container');
-            if (!userLocation || savedPlaces.length === 0) return;
-            
-            const nearby = savedPlaces.map(p => {
-                return { ...p, mins: getMinutes(userLocation.lat, userLocation.lng, p.lat, p.lng) };
-            }).filter(p => p.mins <= 15).sort((a,b) => a.mins - b.mins);
+            const nearbyList = document.getElementById('nearby-list');
+            const missingList = document.getElementById('missing-list');
+            nearbyList.innerHTML = ""; missingList.innerHTML = "";
 
-            if (nearby.length === 0) {
-                list.innerHTML = '<p class="opacity-20 text-[10px] uppercase tracking-widest text-center">No pins within 15 mins.</p>';
-                return;
-            }
-
-            list.innerHTML = "";
-            nearby.forEach(p => {
-                if (p.mins <= 3) triggerPush(p.name);
-                const item = document.createElement('div');
-                item.className = "flex justify-between items-center";
-                item.innerHTML = `<span class="text-xs uppercase tracking-widest ${p.mins <= 5 ? 'text-white' : 'text-white/40'}">${p.name}</span>
-                                 <span class="text-[10px] font-mono text-indigo-400">${p.mins} MIN</span>`;
-                list.appendChild(item);
+            savedPlaces.forEach(p => {
+                if (userLocation && p.lat && p.lng) {
+                    const mins = getMinutes(userLocation.lat, userLocation.lng, p.lat, p.lng);
+                    if (mins <= 15) {
+                        if (mins <= 3) triggerPush(p.name);
+                        nearbyList.innerHTML += `<div class="flex justify-between uppercase"><span>${p.name}</span><span class="text-indigo-400">${mins} MIN</span></div>`;
+                    }
+                } else {
+                    missingList.innerHTML += `<div>${p.name} (No Latitude/Longitude)</div>`;
+                }
             });
         }
     </script>
