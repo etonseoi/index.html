@@ -2,55 +2,52 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Artistic Atlas</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @font-face { font-family: 'DINdong'; src: url('DINdong.otf'); }
-        body { 
-            font-family: 'DINdong', sans-serif; 
-            background: #0a0a0a; color: white; overflow: hidden;
-            -webkit-user-select: none; 
-        }
-        .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(40px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        @font-face { font-family: 'DINdong'; src: url('DINdong.otf'); font-style: normal; }
+        body { font-family: 'DINdong', sans-serif; background: #000; color: white; overflow: hidden; }
+        .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px); border: 1px solid rgba(255, 255, 255, 0.1); }
         
-        /* iPhone-style Notification Banner */
+        /* The "Push Banner" - Styled like an iOS Notification */
         #push-banner { 
-            transform: translateY(-150%); 
-            transition: transform 0.6s cubic-bezier(0.2, 1, 0.3, 1); 
-            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+            transform: translateY(-130%); 
+            transition: transform 0.7s cubic-bezier(0.19, 1, 0.22, 1); 
+            box-shadow: 0 30px 60px rgba(0,0,0,0.8);
         }
         #push-banner.show { transform: translateY(0); }
+
+        .custom-scroll::-webkit-scrollbar { width: 0px; }
     </style>
 </head>
-<body class="h-screen flex items-center justify-center">
+<body class="h-screen flex items-center justify-center p-6">
 
-    <!-- Notification Banner -->
-    <div id="push-banner" class="fixed top-4 inset-x-4 mx-auto max-w-sm glass z-50 p-4 rounded-[2rem] flex items-center border-white/10">
-        <div class="bg-indigo-500 w-3 h-3 rounded-full animate-pulse mr-4 shadow-[0_0_15px_#6366f1]"></div>
+    <div id="push-banner" class="fixed top-6 inset-x-4 mx-auto max-w-sm glass z-50 p-5 rounded-[2.2rem] flex items-center border-white/10">
+        <div class="bg-indigo-500 w-3 h-3 rounded-full animate-pulse mr-4 shadow-[0_0_20px_#6366f1]"></div>
         <div class="flex-1">
-            <p class="text-[8px] uppercase tracking-[0.4em] text-indigo-400 font-bold mb-0.5">Nearby Discovery</p>
-            <p id="banner-text" class="text-xs text-white/90 uppercase tracking-widest truncate">Approaching Pin...</p>
+            <p class="text-[9px] uppercase tracking-[0.3em] text-indigo-400 font-bold mb-1">Atlas Discovery</p>
+            <p id="banner-text" class="text-sm text-white/90 uppercase tracking-widest truncate font-medium">New Pin Nearby</p>
         </div>
     </div>
 
-    <div class="fixed inset-0 -z-10 bg-gradient-to-br from-black via-zinc-900 to-indigo-950 opacity-60"></div>
+    <div class="fixed inset-0 -z-10 bg-gradient-to-br from-black via-zinc-950 to-indigo-950 opacity-80"></div>
 
-    <div class="fixed top-10 inset-x-4 mx-auto max-w-md glass rounded-[2.5rem] p-10 shadow-2xl">
-        <div class="mb-6">
-            <label id="gps-label" class="text-[9px] opacity-30 uppercase tracking-[0.4em] block mb-3">System Authorization</label>
-            <button id="gps-btn" onclick="startScanning()" class="w-full py-3 border border-white/10 rounded-full text-[10px] tracking-widest uppercase hover:bg-white/5 transition-all">Enable Real-Time Location</button>
+    <div class="w-full max-w-md glass rounded-[3rem] p-10 shadow-2xl relative">
+        <div class="mb-8">
+            <label id="gps-label" class="text-[9px] opacity-30 uppercase tracking-[0.5em] block mb-4">System Authorization</label>
+            <button id="gps-btn" onclick="startScanning()" class="w-full py-4 border border-white/10 rounded-full text-[10px] tracking-[0.3em] uppercase hover:bg-white/5 active:scale-95 transition-all">Enable Real-Time Location</button>
         </div>
 
-        <div class="mb-10">
-            <label class="text-[9px] opacity-30 uppercase tracking-[0.4em] block mb-3">Sync List (CSV/JSON)</label>
-            <input type="file" id="fileInput" multiple class="text-[10px] text-white/40 file:bg-white/10 file:border-none file:text-white/80 file:rounded-full file:px-4 file:py-1 file:mr-3 cursor-pointer">
+        <div class="mb-12">
+            <label class="text-[9px] opacity-30 uppercase tracking-[0.5em] block mb-4">Initialize Data (CSV/JSON)</label>
+            <input type="file" id="fileInput" multiple class="text-[10px] text-white/40 file:bg-white/10 file:border-none file:text-white/70 file:rounded-full file:px-5 file:py-2 file:mr-4 cursor-pointer">
         </div>
 
-        <h1 class="text-3xl font-light mb-8 uppercase tracking-[0.1em]">Nearby Discoveries</h1>
+        <h1 class="text-3xl font-light mb-8 uppercase tracking-[0.15em] border-b border-white/5 pb-6">Nearby Discoveries</h1>
         
-        <div id="list-container" class="space-y-6 max-h-[35vh] overflow-y-auto pr-2">
-            <div class="opacity-20 text-[10px] uppercase tracking-widest">Waiting for data sync...</div>
+        <div id="list-container" class="space-y-8 max-h-[35vh] overflow-y-auto pr-2 custom-scroll">
+            <div class="opacity-20 text-[10px] uppercase tracking-[0.4em] text-center py-10">Awaiting Signal...</div>
         </div>
     </div>
 
@@ -61,88 +58,94 @@
 
         function startScanning() {
             const label = document.getElementById('gps-label');
+            const btn = document.getElementById('gps-btn');
+            
             navigator.geolocation.watchPosition((p) => {
                 userLocation = { lat: p.coords.latitude, lng: p.coords.longitude };
-                label.innerText = "Location Active"; label.style.color = "#818cf8";
-                checkProximity();
-            }, null, { enableHighAccuracy: true });
+                label.innerText = "Location Active";
+                label.style.color = "#818cf8";
+                btn.innerText = "Synchronized";
+                btn.style.opacity = "0.2";
+                updateDistances();
+            }, (err) => alert("Please enable GPS in Settings"), { enableHighAccuracy: true });
         }
 
-        // Logic to show the Banner (Informative Window)
         function triggerPush(name) {
             if (notifiedSet.has(name)) return;
             const banner = document.getElementById('push-banner');
             document.getElementById('banner-text').innerText = name;
             banner.classList.add('show');
             
-            // Vibration for iPhone (only works if user has interacted with page)
-            if (window.navigator.vibrate) window.navigator.vibrate([150, 100, 150]);
+            if (window.navigator.vibrate) window.navigator.vibrate([200, 100, 200]);
 
             setTimeout(() => {
                 banner.classList.remove('show');
                 notifiedSet.add(name);
-            }, 6000);
-        }
-
-        // CSV URL Decoder logic
-        function parseCSV(text) {
-            const lines = text.split('\n');
-            const data = [];
-            lines.slice(1).forEach(line => {
-                const parts = line.split(',');
-                if (parts[0]) {
-                    data.push({ 
-                        name: parts[0].replace(/"/g, ''), 
-                        url: parts[2],
-                        notified: false 
-                    });
-                }
-            });
-            return data;
+            }, 7000);
         }
 
         document.getElementById('fileInput').addEventListener('change', (e) => {
             Array.from(e.target.files).forEach(file => {
                 const reader = new FileReader();
                 reader.onload = (event) => {
+                    const text = event.target.result;
                     if (file.name.endsWith('.csv')) {
-                        savedPlaces = [...savedPlaces, ...parseCSV(event.target.result)];
+                        const lines = text.split('\n');
+                        lines.slice(1).forEach(line => {
+                            const parts = line.split(',');
+                            if (parts[0]) savedPlaces.push({ name: parts[0].replace(/"/g, ''), lat: null, lng: null });
+                        });
                     } else {
-                        const json = JSON.parse(event.target.result);
-                        // Handles your Review JSON coordinates
+                        const json = JSON.parse(text);
                         (json.features || []).forEach(f => {
                             savedPlaces.push({
-                                name: f.properties?.location?.name || "Spot",
+                                name: f.properties?.location?.name || f.properties?.name || "Spot",
                                 lat: f.geometry.coordinates[1],
                                 lng: f.geometry.coordinates[0]
                             });
                         });
                     }
-                    alert("Atlas Synced.");
-                    refreshUI();
+                    alert("Atlas Synced");
+                    updateDistances();
                 };
                 reader.readAsText(file);
             });
         });
 
-        function refreshUI() {
-            const list = document.getElementById('list-container');
-            list.innerHTML = "";
-            savedPlaces.forEach(p => {
-                const item = document.createElement('div');
-                item.className = "flex justify-between items-center opacity-70 mb-4";
-                item.innerHTML = `<span class="text-xs uppercase tracking-widest">${p.name}</span><span class="text-[8px] opacity-20">SYNCED</span>`;
-                list.appendChild(item);
-            });
+        function getMinutes(lat1, lon1, lat2, lon2) {
+            const R = 6371; 
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return Math.round(((R * c) / 5) * 60); 
         }
 
-        function checkProximity() {
-            // Note: Since CSVs lack coordinates, we show them all.
-            // If they have coordinates (JSON), we check if dist < 0.5km
+        function updateDistances() {
+            const list = document.getElementById('list-container');
+            if (!userLocation || savedPlaces.length === 0) return;
+            
+            list.innerHTML = "";
             savedPlaces.forEach(p => {
-                if (p.lat) {
-                    // Calculate distance... if close, triggerPush(p.name)
+                let distLabel = "STATIONARY";
+                let highlight = false;
+
+                if (p.lat && p.lng) {
+                    const mins = getMinutes(userLocation.lat, userLocation.lng, p.lat, p.lng);
+                    distLabel = `${mins} MIN WALK`;
+                    if (mins <= 5) {
+                        highlight = true;
+                        triggerPush(p.name);
+                    }
                 }
+
+                const item = document.createElement('div');
+                item.className = `flex justify-between items-end fade-in mb-2 pb-2 border-b border-white/5`;
+                item.innerHTML = `
+                    <span class="text-sm uppercase tracking-widest ${highlight ? 'text-white font-bold' : 'text-white/40'}">${p.name}</span>
+                    <span class="text-[9px] font-mono ${highlight ? 'text-indigo-400' : 'opacity-20'}">${distLabel}</span>
+                `;
+                list.appendChild(item);
             });
         }
     </script>
